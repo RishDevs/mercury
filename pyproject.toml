@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mercury-serve"
+version = "0.1.0"
+description = "A from-scratch paged-attention inference server for measuring prefix-aware scheduling"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "torch>=2.4",
+    "safetensors>=0.4.3",
+    "numpy>=1.24",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
+
+[project.optional-dependencies]
+bench = [
+    "aiohttp>=3.9",
+    "pyyaml>=6.0",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "psutil>=5.9",
+]
+hf = [
+    "transformers>=4.43",
+    "huggingface_hub>=0.23",
+    "tokenizers>=0.19",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+mercury-serve = "mercury.server:main"
+
+[tool.setuptools]
+packages = [
+    "mercury",
+    "mercury.model",
+    "mercury.kernels",
+    "bench",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "gpu: requires a CUDA device",
+    "hf: requires transformers and downloaded weights",
+    "slow: takes more than a few seconds",
+]
+filterwarnings = ["ignore::DeprecationWarning"]

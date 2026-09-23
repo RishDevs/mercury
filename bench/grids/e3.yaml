@@ -1,0 +1,64 @@
+# E3: reference points and regime coverage. Cut this first if the session budget runs out.
+name: e3
+model: Qwen/Qwen2.5-0.5B-Instruct
+revision: null
+out_dir: results/e3
+traces_dir: traces
+block_size: 16
+max_running: 64
+max_model_len: 8192
+num_requests: 400
+warmup_requests: 50
+startup_timeout: 1800
+cooldown_s: 10
+shuffle_seed: 2
+
+r_sat: 12.0
+rate_factors: [0.3, 0.5, 0.8, 1.0]
+seeds: [0]
+
+points:
+  # Prefill-bound and scheduler-overhead regimes across all three engines.
+  - engine: mercury
+    policies: [fcfs, lpm_aging]
+    workloads: [w1, w5, w6]
+    rhos: [1]
+
+  - engine: vllm
+    policies: [fcfs]
+    workloads: [w1, w5, w6]
+    rhos: [1]
+
+  # How much of vLLM's lead is CUDA graph capture rather than kernels.
+  - engine: vllm
+    policies: [fcfs]
+    workloads: [w1]
+    rhos: [1]
+    rate_factors: [0.8]
+    extra:
+      enforce_eager: true
+
+  # 10% of streams cancelled at a random point; the assertion is that blocks come back.
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    rate_factors: [0.8]
+    extra:
+      cancel_fraction: 0.1
+
+  # The alpha sweep, run once and then fixed.
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    rate_factors: [0.8]
+    extra:
+      alpha: 500.0
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    rate_factors: [0.8]
+    extra:
+      alpha: 8000.0

@@ -1,0 +1,1615 @@
+<title>Mercury Inference Server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f2f5f7; --surface:#ffffff; --surface-2:#e8edf1;
+  --ink:#191e26; --ink-soft:#49535e; --muted:#6c7784;
+  --rule:#d5dbe2; --rule-soft:#e4e9ee; --code-bg:#edf1f4;
+  --primary:#0d6a7a; --primary-soft:#dcedf0;
+  --brass:#8a5f12; --brass-soft:#f5ecd9;
+  --crit:#9b3526; --crit-soft:#f8e7e2;
+  --shadow:0 1px 2px rgba(20,30,40,.06),0 8px 24px -16px rgba(20,30,40,.25);
+  --measure:68ch;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#10141a; --surface:#161b22; --surface-2:#1d232b;
+    --ink:#e3e8ee; --ink-soft:#b0bac5; --muted:#8a95a2;
+    --rule:#2a313a; --rule-soft:#222831; --code-bg:#1b212a;
+    --primary:#51b2c2; --primary-soft:#11313a;
+    --brass:#d7a755; --brass-soft:#2f2513;
+    --crit:#e28a76; --crit-soft:#35211c;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#10141a; --surface:#161b22; --surface-2:#1d232b;
+  --ink:#e3e8ee; --ink-soft:#b0bac5; --muted:#8a95a2;
+  --rule:#2a313a; --rule-soft:#222831; --code-bg:#1b212a;
+  --primary:#51b2c2; --primary-soft:#11313a;
+  --brass:#d7a755; --brass-soft:#2f2513;
+  --crit:#e28a76; --crit-soft:#35211c;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+  font-size:17px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.ui{font-family:Archivo,"Helvetica Neue",Arial,sans-serif}
+code,kbd,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+a{color:var(--primary)}
+::selection{background:var(--primary-soft)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:2px}
+
+/* ---------- masthead ---------- */
+.masthead{border-bottom:1px solid var(--rule);background:var(--surface)}
+.masthead-inner{max-width:1180px;margin:0 auto;padding:44px 28px 34px;
+  display:grid;gap:30px;grid-template-columns:minmax(0,1fr) minmax(0,420px);align-items:end}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+h1{font-size:clamp(38px,6vw,60px);line-height:1.02;letter-spacing:-.025em;font-weight:700;
+  margin:0 0 16px;text-wrap:balance}
+.thesis{font-size:19px;line-height:1.5;color:var(--ink-soft);margin:0;max-width:44ch}
+.thesis b{color:var(--ink);font-weight:600}
+
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.fact{background:var(--surface);padding:13px 15px}
+.fact dt{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+.fact dd{margin:0;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;
+  font-variant-numeric:tabular-nums}
+
+/* ---------- finding panel ---------- */
+.finding{max-width:1180px;margin:0 auto;padding:40px 28px 8px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+  box-shadow:var(--shadow);padding:26px 28px 22px}
+.panel-head{display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;
+  justify-content:space-between;margin-bottom:6px}
+.panel-head h2{font-size:20px;margin:0;letter-spacing:-.012em}
+.panel-note{font-size:14px;color:var(--muted);margin:0;max-width:62ch}
+.chart-wrap{margin-top:20px;overflow-x:auto}
+svg.chart{display:block;min-width:520px;width:100%;height:auto}
+.chart text{font-family:"IBM Plex Mono",monospace}
+.t-label{fill:var(--ink);font-size:12.5px}
+.t-value{fill:var(--ink);font-size:13px;font-weight:500}
+.t-axis{fill:var(--muted);font-size:10.5px}
+.t-sub{fill:var(--muted);font-size:10.5px}
+.grid-line{stroke:var(--rule-soft);stroke-width:1}
+.axis-line{stroke:var(--rule);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:16px;padding-top:15px;
+  border-top:1px solid var(--rule-soft);font-size:13.5px;color:var(--ink-soft)}
+.legend span{display:flex;align-items:center;gap:7px}
+.swatch{width:11px;height:11px;border-radius:2px;flex:none}
+
+/* ---------- layout ---------- */
+.shell{max-width:1180px;margin:0 auto;padding:36px 28px 90px;
+  display:grid;grid-template-columns:232px minmax(0,1fr);gap:52px;align-items:start}
+nav.rail{position:sticky;top:22px;max-height:calc(100vh - 44px);overflow-y:auto;
+  font-family:Archivo,sans-serif;padding-right:4px}
+.rail h3{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 9px;font-weight:400}
+.rail ol{list-style:none;margin:0 0 26px;padding:0;display:flex;flex-direction:column;gap:1px}
+.rail a{display:block;text-decoration:none;color:var(--ink-soft);font-size:13.5px;
+  padding:5px 10px;border-left:2px solid var(--rule-soft);line-height:1.35}
+.rail a:hover{color:var(--ink);background:var(--surface-2)}
+.rail a.doc{font-weight:600;font-size:14px;color:var(--ink);border-left-color:var(--rule)}
+.rail a.sub{padding-left:20px;font-size:12.5px}
+.rail a.active{color:var(--primary);border-left-color:var(--primary);background:var(--primary-soft)}
+
+main{min-width:0}
+article{max-width:var(--measure)}
+article.wide{max-width:none}
+
+/* ---------- document sections ---------- */
+.doc-open{margin:0 0 34px;padding-bottom:26px;border-bottom:2px solid var(--ink)}
+.doc-open .num{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;
+  color:var(--primary);display:block;margin-bottom:11px}
+.doc-open h2{font-size:clamp(28px,4.2vw,40px);line-height:1.08;letter-spacing:-.022em;
+  margin:0 0 12px;text-wrap:balance}
+.doc-open p{margin:0;color:var(--ink-soft);font-size:17px;max-width:58ch}
+
+h3{font-size:24px;line-height:1.2;letter-spacing:-.016em;margin:52px 0 14px;text-wrap:balance}
+h4{font-size:17.5px;line-height:1.3;margin:34px 0 10px;letter-spacing:-.008em}
+h5{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted);margin:26px 0 8px;font-weight:400}
+p{margin:0 0 17px}
+ul,ol{margin:0 0 17px;padding-left:22px}
+li{margin-bottom:8px}
+li::marker{color:var(--muted)}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--rule);margin:42px 0}
+
+code{background:var(--code-bg);padding:.1em .34em;border-radius:3px;font-size:.855em;
+  border:1px solid var(--rule-soft)}
+pre{background:var(--code-bg);border:1px solid var(--rule);border-radius:4px;
+  padding:15px 17px;overflow-x:auto;margin:0 0 19px;line-height:1.55}
+pre code{background:none;padding:0;border:0;font-size:13px}
+
+blockquote{margin:0 0 20px;padding:2px 0 2px 20px;border-left:3px solid var(--brass);
+  color:var(--ink);font-size:18.5px;line-height:1.55}
+blockquote p:last-child{margin-bottom:0}
+
+.tbl{overflow-x:auto;margin:0 0 22px;border:1px solid var(--rule);border-radius:4px;
+  background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-family:Archivo,sans-serif;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule-soft);
+  vertical-align:top}
+th{font-weight:600;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td code{font-size:12.5px}
+
+.callout{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--primary);
+  border-radius:0 4px 4px 0;padding:16px 19px;margin:0 0 22px;font-size:16px}
+.callout.warn{border-left-color:var(--crit)}
+.callout.brass{border-left-color:var(--brass)}
+.callout p:last-child{margin-bottom:0}
+.callout .tag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+
+.reg{margin:0 0 18px;padding-left:17px;border-left:2px solid var(--rule)}
+.reg > .lead{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;display:block;margin-bottom:6px}
+.reg.plain{border-left-color:var(--brass)}
+.reg.plain > .lead{color:var(--brass)}
+.reg.tech{border-left-color:var(--primary)}
+.reg.tech > .lead{color:var(--primary)}
+.reg p:last-child{margin-bottom:0}
+
+.qa{margin:0 0 28px}
+.qa > h4{margin:0 0 9px;display:flex;gap:11px;align-items:baseline}
+.qa .qn{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--primary);flex:none}
+.qa p:last-child{margin-bottom:0}
+
+.flow{display:grid;gap:9px;margin:0 0 22px;font-family:Archivo,sans-serif;font-size:14px}
+.flow-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:13px;align-items:start;
+  background:var(--surface);border:1px solid var(--rule);border-radius:3px;padding:11px 14px}
+.flow-step b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--primary);
+  font-weight:500;padding-top:1px}
+.flow-step span{color:var(--ink-soft)}
+.flow-step span em{color:var(--ink);font-style:normal;font-weight:600}
+
+.theme-toggle{position:fixed;right:18px;bottom:18px;z-index:20;
+  background:var(--surface);color:var(--ink-soft);border:1px solid var(--rule);
+  border-radius:999px;padding:9px 15px;cursor:pointer;box-shadow:var(--shadow);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.theme-toggle:hover{color:var(--ink);border-color:var(--muted)}
+
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:8px;top:8px;background:var(--surface);padding:10px 14px;z-index:40;
+  border:1px solid var(--primary);border-radius:3px}
+
+@media (max-width:920px){
+  .masthead-inner{grid-template-columns:1fr;gap:26px}
+  .shell{grid-template-columns:1fr;gap:26px;padding:26px 20px 70px}
+  nav.rail{position:static;max-height:none;border-bottom:1px solid var(--rule);padding-bottom:18px}
+  .rail ol{margin-bottom:16px}
+  .rail a.sub{display:none}
+  .finding{padding:28px 20px 4px}
+  body{font-size:16.5px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<a class="skip" href="#doc1">Skip to the documents</a>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <p class="eyebrow">From-scratch inference engine &middot; scheduling study</p>
+      <h1>Mercury</h1>
+      <p class="thesis">A paged-attention LLM serving engine built to answer one question:
+        when the KV cache can't hold every shared prefix, <b>does prefix-aware scheduling
+        beat first-come-first-served — and what does the starvation bound cost?</b></p>
+    </div>
+    <dl class="facts">
+      <div class="fact"><dt>Model under test</dt><dd>Qwen2.5-0.5B</dd></div>
+      <div class="fact"><dt>Target hardware</dt><dd>Tesla T4 &middot; fp16</dd></div>
+      <div class="fact"><dt>KV cost per token</dt><dd>12 KB</dd></div>
+      <div class="fact"><dt>Block size</dt><dd>16 tokens</dd></div>
+      <div class="fact"><dt>Python</dt><dd>6,374 lines</dd></div>
+      <div class="fact"><dt>Tests green</dt><dd>94 CPU + 39 GPU</dd></div>
+    </dl>
+  </div>
+</header>
+
+<section class="finding">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>The mechanism, measured</h2>
+      <p class="panel-note">Six prefix groups against a pool too small to hold them, deterministic
+        runner, identical traces. The eviction column is the thrashing made visible.</p>
+    </div>
+    <div class="chart-wrap">
+      <svg class="chart" viewBox="0 0 640 252" role="img"
+           aria-label="Prefix cache hit rate by policy: FCFS 0.455, LPM plus aging 0.602, LPM 0.817, with eviction counts of 1287, 1188 and 576 respectively.">
+        <g>
+          <line class="grid-line" x1="196" y1="34" x2="196" y2="196"/>
+          <line class="grid-line" x1="284" y1="34" x2="284" y2="196"/>
+          <line class="grid-line" x1="372" y1="34" x2="372" y2="196"/>
+          <line class="grid-line" x1="460" y1="34" x2="460" y2="196"/>
+          <line class="grid-line" x1="548" y1="34" x2="548" y2="196"/>
+        </g>
+        <text class="t-axis" x="196" y="26" text-anchor="middle">0</text>
+        <text class="t-axis" x="284" y="26" text-anchor="middle">0.25</text>
+        <text class="t-axis" x="372" y="26" text-anchor="middle">0.50</text>
+        <text class="t-axis" x="460" y="26" text-anchor="middle">0.75</text>
+        <text class="t-axis" x="548" y="26" text-anchor="middle">1.00</text>
+        <text class="t-axis" x="196" y="14" text-anchor="start">prefix cache hit rate</text>
+
+        <text class="t-label" x="182" y="63" text-anchor="end">FCFS</text>
+        <text class="t-sub" x="182" y="78" text-anchor="end">1,287 evictions</text>
+        <rect x="196" y="48" width="160.2" height="26" rx="2" fill="var(--crit)"/>
+        <text class="t-value" x="366" y="67">0.455</text>
+
+        <text class="t-label" x="182" y="128" text-anchor="end">LPM + aging</text>
+        <text class="t-sub" x="182" y="143" text-anchor="end">1,188 evictions</text>
+        <rect x="196" y="113" width="211.9" height="26" rx="2" fill="var(--primary)"/>
+        <text class="t-value" x="418" y="132">0.602</text>
+
+        <text class="t-label" x="182" y="193" text-anchor="end">LPM</text>
+        <text class="t-sub" x="182" y="208" text-anchor="end">576 evictions</text>
+        <rect x="196" y="178" width="287.6" height="26" rx="2" fill="var(--brass)"/>
+        <text class="t-value" x="494" y="197">0.817</text>
+
+        <line class="axis-line" x1="196" y1="34" x2="196" y2="218"/>
+        <text class="t-sub" x="196" y="240">Requests finished in the same window: 267 &middot; 337 &middot; 391</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--crit)"></i>Arrival order thrashes</span>
+      <span><i class="swatch" style="background:var(--brass)"></i>Grouping by prefix is the ceiling</span>
+      <span><i class="swatch" style="background:var(--primary)"></i>The bound gives back ~40% of the gain</span>
+    </div>
+  </div>
+</section>
+
+<div class="shell">
+<nav class="rail" aria-label="Contents">
+  <h3>Contents</h3>
+  <ol>
+    <li><a class="doc" href="#doc1">01 &nbsp;Significance</a></li>
+    <li><a class="sub" href="#s-plain">What it does</a></li>
+    <li><a class="sub" href="#s-problem">The real problem</a></li>
+    <li><a class="sub" href="#s-hard">Why it's hard</a></li>
+    <li><a class="sub" href="#s-diff">Not a tutorial build</a></li>
+    <li><a class="sub" href="#s-not">What it is not</a></li>
+  </ol>
+  <ol>
+    <li><a class="doc" href="#doc2">02 &nbsp;Walkthrough</a></li>
+    <li><a class="sub" href="#w-shape">The shape of it</a></li>
+    <li><a class="sub" href="#w-trace">Execution trace</a></li>
+    <li><a class="sub" href="#w-load">Load-bearing blocks</a></li>
+    <li><a class="sub" href="#w-hash">Hashing</a></li>
+    <li><a class="sub" href="#w-alloc">Allocator</a></li>
+    <li><a class="sub" href="#w-sched">Scheduler</a></li>
+    <li><a class="sub" href="#w-engine">Engine</a></li>
+    <li><a class="sub" href="#w-runner">Runner &amp; attention</a></li>
+    <li><a class="sub" href="#w-kernel">Triton kernel</a></li>
+    <li><a class="sub" href="#w-bench">Benchmark harness</a></li>
+    <li><a class="sub" href="#w-tests">Tests &amp; results</a></li>
+  </ol>
+  <ol>
+    <li><a class="doc" href="#doc3">03 &nbsp;Defense</a></li>
+    <li><a class="sub" href="#d-30">30 seconds</a></li>
+    <li><a class="sub" href="#d-2m">Two minutes</a></li>
+    <li><a class="sub" href="#d-board">At a whiteboard</a></li>
+    <li><a class="sub" href="#d-dec">Decisions rejected</a></li>
+    <li><a class="sub" href="#d-qa">Hard questions</a></li>
+    <li><a class="sub" href="#d-lim">Limitations &amp; next</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================ DOC 1 ============================ -->
+<article id="doc1">
+  <header class="doc-open">
+    <span class="num">Document 01</span>
+    <h2>What this is and why it matters</h2>
+    <p>Written so it stands on its own for someone who has never seen the project.</p>
+  </header>
+
+  <h3 id="s-plain">What it does, plainly</h3>
+  <p>Mercury is an LLM inference server I wrote from scratch in PyTorch. It takes HTTP requests,
+  runs a 0.5B-parameter model on one GPU, and streams tokens back. Internally it does the things a
+  production serving engine does: it stores attention keys and values in fixed-size pages instead of
+  one contiguous buffer per request, it recognises when two requests start with the same text and
+  reuses the cached computation instead of redoing it, it keeps a batch of requests in flight and
+  swaps finished ones out for waiting ones every step, and it streams tokens over server-sent events
+  with proper cancellation when a client hangs up.</p>
+
+  <p>But the server is not the point. The server is the instrument.</p>
+
+  <p>The point is an experiment. Mercury implements three request-scheduling policies that are
+  identical in every way except the order in which they admit waiting requests, and it measures what
+  that order is worth. The question it answers is:</p>
+
+  <blockquote><p>When the KV cache cannot hold every shared prefix at once, does ordering requests by
+  cache affinity beat first-come-first-served — and what does it cost the requests that get pushed
+  back?</p></blockquote>
+
+  <p>Everything else in the repository exists to make that question answerable with numbers nobody
+  can wave away.</p>
+
+  <h3 id="s-problem">The real problem</h3>
+  <p>Serving an LLM is a memory problem before it is a compute problem.</p>
+
+  <p>Every token a model has already seen leaves behind a key and a value vector in every layer. For
+  Qwen2.5-0.5B that is about 12 KB per token. A 2,000-token system prompt costs 24 MB of GPU memory,
+  and it costs that again for every request carrying it, unless you do something about it. The
+  "something" is prefix caching: notice that a hundred requests share the same 2,000-token preamble,
+  compute it once, and let them all point at the same physical memory.</p>
+
+  <p>This matters because of how people actually use models now. A chatbot deployment has one system
+  prompt shared by every user. An agent framework sends a tool catalogue thousands of tokens long on
+  every single call. A multi-turn conversation resends its entire history every turn, so turn seven
+  is turn six's prompt plus a bit. Shared prefixes are not an edge case; they are most of the
+  tokens.</p>
+
+  <p>Prefix caching is well understood and every serious engine has it. Here is the part that isn't
+  settled. The cache is finite. When the prefixes that are live in your workload add up to more than
+  the cache can hold, the cache has to evict something, and <strong>what order you serve requests in
+  decides what gets evicted</strong>.</p>
+
+  <p>Serve requests strictly in arrival order and you interleave prefix groups: a request for group
+  A, then B, then C, then A again. By the time the second A arrives, A's prefix has been evicted to
+  make room for B and C, so you recompute it from scratch. Then you evict it again for the next B.
+  The cache is full the whole time and almost never useful. That is thrashing, and it is not a subtle
+  effect — in my own measurements it takes the hit rate from 82% down to 45%.</p>
+
+  <p>Group the requests by prefix instead and you stop paying for that. That policy exists; SGLang
+  ships it as <code>--schedule-policy lpm</code>. And it has a problem its users have reported: if
+  you always prefer the request with the longest cached prefix, a request whose prefix isn't cached
+  can be displaced by every cache-hot arrival, forever. Someone waits indefinitely so that everyone
+  else can be slightly faster. The fix is obvious in outline — let a request's priority grow as it
+  waits, and put a hard ceiling on the wait — but the interesting question is what that fix costs.
+  Nobody publishes that number.</p>
+
+  <p>Mercury measures it.</p>
+
+  <h3 id="s-hard">Why this is harder than it sounds</h3>
+
+  <h4>The memory system and the scheduler are one system</h4>
+  <p>You cannot design the scheduler without the allocator, because "can this request be admitted?"
+  is a question about free blocks, cached blocks that would be pinned, and blocks the running batch
+  will need on the next step. And you cannot design the allocator without the scheduler, because the
+  order blocks are released in determines which ones get evicted. One line in my allocator — the loop
+  that releases a finished request's blocks in reverse order, so its private tail enters the eviction
+  queue before its shared head — measurably changes the hit rate. That line only makes sense if you
+  are holding both halves in your head at once.</p>
+
+  <h4>Being wrong is silent</h4>
+  <div class="callout warn">
+    <span class="tag">The failure that defines this domain</span>
+    <p>If the block table points at a page that was evicted and handed to another request, the model
+    does not crash. It reads whatever is in that memory, attends over it, and produces fluent,
+    grammatical, completely wrong text. If rotary position embeddings restart at zero for a suffix
+    resumed on top of a cached prefix, the output looks plausible and drifts. There is no exception,
+    no stack trace, no failing assertion.</p>
+  </div>
+  <p>The only defence is a correctness gate you build deliberately: Mercury compares its greedy
+  output against HuggingFace <code>transformers</code> on the same weights across four modes — single
+  request, batched, with a warm prefix cache, and after a forced preemption — because a prefix-cache
+  bug shows up in exactly one of those and nowhere else.</p>
+
+  <h4>The effect is conditional, so measuring it means controlling a variable most benchmarks ignore</h4>
+  <p>Prefix-aware scheduling should do nothing when the cache is big enough to hold everything,
+  because then FCFS already hits on almost every request. It should matter in a band where the
+  working set exceeds capacity, and it should stop mattering again when the working set exceeds
+  capacity so badly that even perfect grouping can't keep prefixes resident. A benchmark that reports
+  one number from one configuration cannot tell you which of those three regimes it was in, which
+  means it cannot tell you whether the number generalises. So Mercury's main figure has cache
+  pressure on the x-axis — the ratio of shared prefix tokens live in the workload to KV cache
+  capacity — and sweeps it from 0.25 to 4. The shape of that curve is the finding. A flat left half
+  is not a disappointing result; it is the control that makes the middle believable.</p>
+
+  <h4>The cost is invisible in the metrics people report</h4>
+  <p>Mean latency, p95 latency, and throughput all improve or stay flat under a policy that starves a
+  minority of requests, because the starved requests are a minority. You only see it if you go
+  looking: maximum queueing delay, measured server-side as the gap between a request arriving and
+  being admitted. That metric is in Mercury because the thing it measures is the reason the policy is
+  controversial.</p>
+
+  <h3 id="s-diff">What makes this different from a tutorial build</h3>
+  <p>I want to be exact about this, because "I built an inference server" is a sentence a lot of
+  people can say, and most of what they built is a wrapper.</p>
+
+  <h4>The prior art is stated up front, not discovered by the reader</h4>
+  <p>Prefix-aware scheduling is not mine. SGLang shipped it. The starvation problem is a known open
+  issue. A 2026 paper called Feather already measured that prefix-aware schedulers can burn CPU
+  comparable to their GPU work. All of that is in the README's second paragraph. What is mine is the
+  measurement of <em>when</em> it helps as a function of pressure, the aging variant with a hard
+  bound, and the honest accounting of what the bound costs. Claiming to have invented what SGLang
+  already ships is how a portfolio project gets laughed out of an interview.</p>
+
+  <h4>Every number is explainable down to the allocator</h4>
+  <p>Nothing here is a call into a library I can't read. The paged attention, the block allocator,
+  the hash chain that establishes prefix identity, the scheduler, the continuous batching loop, the
+  Qwen2 forward pass, the safetensors loading, the sampler, the SSE streaming — all of it is in this
+  repository, and when a number moves I can say which line moved it. That is the difference between
+  "vLLM got 2,400 tokens per second" and "the hit rate fell because the release order put the shared
+  prefix into the eviction queue ahead of the private suffix."</p>
+
+  <h4>The architecture was chosen to be testable, and it is tested</h4>
+  <p>The entire contract between the scheduler and the GPU is one method:
+  <code>execute(plan) -&gt; sampled token ids</code>. Because that seam exists, the allocator, all
+  three policies, preemption, continuous batching, cancellation and the whole HTTP path can be
+  exercised on a laptop with a deterministic fake runner — including randomised property tests that
+  assert reference counts never go negative, that no block is ever in two states at once, and that
+  after thousands of operations every block comes home. The GPU is needed only for parity and for
+  performance. In practice about 40% of the code never needs a GPU, and 94 tests run in under ten
+  seconds on a laptop. I also found a real scheduling insight from those tests rather than from
+  theory: with only one prefix group, all three policies are identical, because there is nothing to
+  thrash between. That is now a test.</p>
+
+  <h4>The comparisons were pre-registered</h4>
+  <p>Four specific comparisons are written into the README before the experiment runs, including the
+  one designed to fail if the headline is a measurement artifact ("all policies at pressure 0.5
+  should be within noise; if they aren't, the headline is suspect"). The analysis script computes
+  exactly those four and prints PASS/FAIL. This removes the most common way benchmark projects fool
+  themselves, which is choosing which comparison to report after seeing the data.</p>
+
+  <h4>The benchmark protocol closes the holes that get latency numbers dismissed</h4>
+  <div class="tbl"><table>
+    <thead><tr><th>Hole</th><th>How it is closed</th></tr></thead>
+    <tbody>
+      <tr><td>Closed-loop load hides queueing</td><td>Open-loop client; every request goes out at its
+        scheduled arrival time whether or not earlier ones finished</td></tr>
+      <tr><td>Different token counts across engines</td><td>Fixed <code>max_tokens</code> with EOS
+        ignored; runs where streamed counts disagree are flagged and dropped</td></tr>
+      <tr><td>No warmup</td><td>50 deliberately off-trace requests, then a stats reset: warm server,
+        cold cache</td></tr>
+      <tr><td>Single runs</td><td>Three repetitions with different seeds; median reported, spread
+        shown</td></tr>
+      <tr><td>Client competing for CPU</td><td>Client CPU measured; runs above 70% of a core are
+        flagged</td></tr>
+      <tr><td>A capacity flag that silently did nothing</td><td>The cap is read back out of each
+        engine's own startup log and asserted before the run begins</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Scheduler CPU time is reported, not assumed away</h4>
+  <p>The Feather paper's finding is that prefix-aware scheduling can cost CPU comparable to GPU
+  execution. Mercury times <code>schedule()</code> on every single step and reports it as a share of
+  step time. If the policy wins on hit rate and loses it all to scheduling overhead, that is the
+  result, and I would rather publish it than not know.</p>
+
+  <h3 id="s-not">What this project is not</h3>
+  <p>It is not a fast inference server. Mercury's attention gathers KV blocks into a padded tensor
+  and calls PyTorch's <code>scaled_dot_product_attention</code> instead of using a fused
+  paged-attention kernel. vLLM will beat it on raw throughput and that is expected and fine — the
+  gather is identical across all three policies, so it cannot bias the comparison that carries the
+  finding. Using it as an excuse to skip the comparison would be dishonest; pretending Mercury
+  competes on absolute speed would be worse.</p>
+
+  <p>It is not a new scheduling algorithm. It is a careful measurement of a known one, plus a
+  starvation bound, on hardware anyone can get for free.</p>
+
+  <p>It does not run on anything but Qwen2, fp16, one GPU. Those are scope choices, each with a
+  rejected alternative I can defend.</p>
+
+  <h4>The sentence this is all aimed at</h4>
+  <div class="callout brass">
+    <span class="tag">The shape the write-up ends in</span>
+    <p>On a T4 serving Qwen2.5-0.5B, when shared prefixes exceeded KV capacity by 2&times;,
+    prefix-aware scheduling with a 5-second starvation bound raised prefix-cache hit rate from A% to
+    B% and cut p95 time-to-first-token by C%, at D% of FCFS throughput, while capping worst-case
+    queueing at E seconds versus F seconds for unbounded LPM; <strong>below capacity all policies
+    were within noise.</strong></p>
+  </div>
+  <p>The last clause is the one that makes the rest believable, and it is the reason the pressure
+  sweep exists at all.</p>
+</article>
+
+<!-- ============================ DOC 2 ============================ -->
+<article id="doc2">
+  <header class="doc-open">
+    <span class="num">Document 02</span>
+    <h2>Code walkthrough</h2>
+    <p>Every file, every class, every function that isn't obvious — in two registers.</p>
+  </header>
+
+  <div class="callout">
+    <span class="tag">How to read this</span>
+    <p><strong>Plain</strong> is the idea with a concrete analogy and no jargon.
+    <strong>Technical</strong> is the mechanics, the data shapes, and what breaks if it were written
+    differently. If you read only two sections, read the execution trace and the load-bearing
+    blocks.</p>
+  </div>
+
+  <h3 id="w-shape">The shape of the thing</h3>
+  <p>Two halves joined by a queue.</p>
+<pre><code>HTTP side (asyncio)                    Engine side (one thread)
+-------------------                    ------------------------
+FastAPI /v1/completions                schedule -&gt; execute -&gt; route output
+  owns sockets, SSE streams,             owns the GPU, the KV cache,
+  cancellation                           the block allocator, the scheduler
+        |                                        ^
+        +------- command queue ------------------+
+        &lt;------- per-request sink callbacks -----+</code></pre>
+  <p>All GPU work lives on one thread. That removes an entire class of concurrency bug — no two
+  threads ever touch the KV cache — and it matches how vLLM and SGLang separate their API server from
+  their engine core. The HTTP side never blocks on the GPU, and the engine side never touches the
+  asyncio loop directly; it calls a per-request <em>sink</em> callback, and the sink is the thing that
+  knows how to hop back onto the right event loop.</p>
+
+<pre><code>mercury/
+  config.py        shapes and knobs, and the checks that stop a nonsense configuration
+  request.py       one request's data and its state machine
+  hashing.py       prefix identity: a chain hash over full blocks
+  allocator.py     the paged KV pool, reference counts, prefix cache, LRU eviction
+  scheduler.py     continuous batching, the three policies, preemption
+  runner.py        plan -&gt; tensors -&gt; forward -&gt; sampled tokens
+  engine.py        the loop, the command queue, output routing, metrics
+  metrics.py       per-step timings and finished-request records
+  sampling.py      greedy / temperature / top-p
+  server.py        FastAPI, SSE, cancellation, /stats
+  testing.py       the deterministic runner that makes all of the above testable
+  model/
+    qwen2.py       RMSNorm, SwiGLU MLP, GQA attention, decoder stack
+    attention.py   writing and reading KV pages, the two attention contexts
+    rope.py        rotary position embeddings
+    loader.py      resolve the model, build on meta device, load safetensors
+  kernels/
+    rmsnorm_quant.py   the fused residual-add + RMSNorm + INT8 Triton kernel
+bench/
+  workloads.py     W1-W6 trace generation and the pressure calibration
+  client.py        open-loop trace replayer
+  run_matrix.py    the experiment grid and every guard around it
+  analyze.py       percentiles, CIs, figures, tables, pre-registered comparisons
+  kernel_bench.py  eager vs torch.compile vs Triton</code></pre>
+
+  <h3 id="w-trace">The execution trace</h3>
+
+  <h5>Startup</h5>
+  <div class="flow">
+    <div class="flow-step"><b>1</b><span><em>server.main()</em> parses flags into an
+      <code>EngineConfig</code>.</span></div>
+    <div class="flow-step"><b>2</b><span><em>create_app(cfg)</em> constructs an
+      <code>Engine</code>, which builds a <code>BlockAllocator</code>, a <code>Scheduler</code>
+      wrapping it, an <code>EngineMetrics</code>, and — unless one is injected — a
+      <code>ModelRunner</code>.</span></div>
+    <div class="flow-step"><b>3</b><span><em>load_qwen2</em> resolves the model path, reads
+      <code>config.json</code>, validates the engine config against it, builds the module tree on the
+      <code>meta</code> device, calls <code>to_empty</code>, copies every tensor in from safetensors,
+      and builds the rotary cos/sin table.</span></div>
+    <div class="flow-step"><b>4</b><span>The runner allocates the KV cache: for each of the 24
+      layers, a K and a V tensor of shape <code>[num_blocks, 16, 2, 64]</code> in fp16.</span></div>
+    <div class="flow-step"><b>5</b><span>The server prints one line containing
+      <code>kv_blocks=&lt;N&gt;</code>. The matrix runner greps for exactly that to prove the capacity
+      cap took effect.</span></div>
+    <div class="flow-step"><b>6</b><span>FastAPI's lifespan starts the engine thread and calls
+      <code>gc.freeze()</code>.</span></div>
+  </div>
+
+  <h5>One request</h5>
+  <div class="flow">
+    <div class="flow-step"><b>1</b><span><code>POST /v1/completions</code> arrives; the handler
+      resolves the prompt to token ids and builds <code>SamplingParams</code>.</span></div>
+    <div class="flow-step"><b>2</b><span>It creates an <code>asyncio.Queue</code> and a closure
+      <em>sink(event)</em> doing <code>loop.call_soon_threadsafe(queue.put_nowait, event)</code> —
+      the only bridge from the engine thread back to this stream.</span></div>
+    <div class="flow-step"><b>3</b><span><em>engine.submit</em> checks the token ceiling, builds a
+      <code>Request</code> — computing its block hash chain here, once, so scheduling never looks at
+      token ids again — and pushes <code>("add", request)</code> onto the command queue.</span></div>
+    <div class="flow-step"><b>4</b><span>The handler returns a <code>StreamingResponse</code> wrapping
+      an async generator that awaits the queue.</span></div>
+  </div>
+
+  <h5>One engine step</h5>
+  <div class="flow">
+    <div class="flow-step"><b>1</b><span><em>Drain commands.</em> Adds go into the waiting list sorted
+      by arrival; aborts release blocks immediately. Aborts are applied here and nowhere else, so a
+      cancellation never lands in the middle of a forward pass.</span></div>
+    <div class="flow-step"><b>2</b><span><em>Schedule.</em> Reserve decode blocks for running requests
+      (preempting if memory runs out); score the oldest 128 waiting requests by policy, sort, and
+      admit what fits; return a <code>Plan</code>.</span></div>
+    <div class="flow-step"><b>3</b><span><em>Execute.</em> One prefill forward per newly admitted
+      request over <code>tokens[num_cached:]</code>, one decode forward for the whole running batch,
+      then <code>lm_head</code> and sampling.</span></div>
+    <div class="flow-step"><b>4</b><span><em>Route output.</em> Commit newly-full blocks into the
+      prefix cache, append the token, call the sink, and close finished streams after releasing their
+      blocks.</span></div>
+    <div class="flow-step"><b>5</b><span><em>Record.</em> One <code>StepRecord</code> with scheduling
+      time, tensor-prep time, forward time, total step time, queue depths and free blocks.</span></div>
+  </div>
+
+  <h5>The stream ending</h5>
+  <p>The generator receives <code>done</code>, emits a final chunk carrying
+  <code>finish_reason</code>, emits <code>data: [DONE]</code>, and returns. If instead the client
+  hangs up, the generator is cancelled or <code>request.is_disconnected()</code> returns true; either
+  way its <code>finally</code> fires <code>engine.abort(rid)</code> and the blocks come back on the
+  next step.</p>
+
+  <h3 id="w-load">The load-bearing blocks</h3>
+  <p>The eight worth knowing cold. Everything else is plumbing around these.</p>
+  <div class="tbl"><table>
+    <thead><tr><th class="num">#</th><th>Block</th><th>Why it is load-bearing</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><code>hashing.block_hashes</code></td><td>Defines what "the same
+        prefix" means. Every cache hit and every correctness guarantee rests on this chain.</td></tr>
+      <tr><td class="num">2</td><td><code>allocator.allocate_prompt</code></td><td>The only place
+        blocks are handed out. Gets the pinning arithmetic right or the pool silently
+        oversubscribes.</td></tr>
+      <tr><td class="num">3</td><td><code>allocator.release</code></td><td>Reverse order. One line,
+        and it measurably changes the hit rate.</td></tr>
+      <tr><td class="num">4</td><td><code>scheduler.schedule</code> step 1</td><td>Decode reservation
+        and preemption. The only loop that can deadlock the engine.</td></tr>
+      <tr><td class="num">5</td><td><code>scheduler._score</code></td><td>The three policies live here
+        and nowhere else.</td></tr>
+      <tr><td class="num">6</td><td><code>engine._commit_full_blocks</code></td><td>The moment a block
+        becomes shareable. Too early and you corrupt other requests; too late and you never
+        hit.</td></tr>
+      <tr><td class="num">7</td><td><code>attention.paged_prefill_attention</code></td><td>The
+        explicit mask. <code>is_causal=True</code> is wrong here and wrong silently.</td></tr>
+      <tr><td class="num">8</td><td><code>runner.slot_mapping</code></td><td>The off-by-one that gives
+        you exactly one correct block and then garbage.</td></tr>
+      <tr><td class="num">9</td><td><code>workloads.capacity_for_pressure</code></td><td>Defines the
+        x-axis of the main figure. Wrong here and every point is at the wrong pressure.</td></tr>
+      <tr><td class="num">10</td><td><code>run_matrix.check_capacity</code></td><td>Reads the cap back
+        out of the engine's own log. Without it a renamed flag produces a beautiful, meaningless
+        sweep.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="w-hash">hashing.py — what "the same prefix" means</h3>
+<pre><code>out, parent = [], 0
+for start in range(0, len(token_ids) - block_size + 1, block_size):
+    parent = block_hash(parent, token_ids[start : start + block_size])
+    out.append(parent)</code></pre>
+
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Imagine numbering the pages of a book, except each page's number is computed from its own words
+  <em>and</em> the previous page's number. Two books get the same number for page five only if they
+  are word-for-word identical through the end of page five. That lets you compare two 2,000-word
+  documents by comparing a handful of numbers, and it means a match on page five is a
+  <em>promise</em> that pages one through five all match.</p></div>
+
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>A chain hash over full blocks: <code>h_i = H(h_{i-1}, tokens[i*B : (i+1)*B])</code>, so
+  <code>h_i</code> transitively depends on every token before position <code>(i+1)*B</code>. Two
+  consequences the rest of the system leans on. First, a hit on block <em>i</em> guarantees blocks
+  <em>0..i</em> are shared — which is why <code>cached_prefix_blocks</code> can stop at the first miss
+  instead of scanning. Second, scheduling never touches token ids: hashes are computed once on
+  arrival, so scoring a request for LPM is a handful of dictionary lookups on integers. This is the
+  design the Feather paper argues for over radix-tree traversal, on the grounds that tree walks cost
+  CPU comparable to the GPU work they are scheduling. The loop runs to
+  <code>len - block_size + 1</code>, so a partial trailing block gets no hash — deliberate, because
+  writing the next token into a partial block would corrupt anyone sharing it.</p>
+  <p><strong>If it were written differently:</strong> hashing each block independently rather than
+  chaining would let two requests that share block three but differ in block one collide on block
+  three, and the model would attend over another request's keys. Fluent, wrong output, no error
+  anywhere.</p></div>
+
+  <h4>The cryptographic switch</h4>
+  <p>Default is Python's built-in <code>hash</code> over a tuple of ints, which is deterministic
+  across processes (<code>PYTHONHASHSEED</code> randomises strings and bytes, not integers) and fast.
+  The <code>sha256</code> mode exists because a 64-bit hash over adversarial input is forgeable: a
+  user who could construct a colliding prompt would be served another user's KV. At this scale
+  collisions are negligible; the switch documents that I know why it would matter and what the fix
+  is.</p>
+
+  <h4><code>extend_hashes</code></h4>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>The book is still being written. Every time another full page is finished, give it a number,
+  chaining from the last one. Don't renumber the pages you already did.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Grows an existing chain in place, continuing from <code>hashes[-1]</code>. Called once per step
+  per request. Without it, extending the chain over generated tokens would mean rehashing the whole
+  prompt every step — O(prompt) work per token, which at 2,000-token prompts would dominate the
+  step.</p></div>
+
+  <h3 id="w-alloc">allocator.py — the three-state invariant</h3>
+  <p>The single most important invariant in the codebase: <strong>every block is in exactly one of
+  three states.</strong></p>
+  <div class="tbl"><table>
+    <thead><tr><th>State</th><th class="num">ref</th><th>Has a hash?</th><th>Lives in</th></tr></thead>
+    <tbody>
+      <tr><td>Free</td><td class="num">0</td><td>No</td><td>the <code>free</code> deque</td></tr>
+      <tr><td>In use</td><td class="num">&ge; 1</td><td>Once full, yes</td><td>some request's block
+        table</td></tr>
+      <tr><td>Cached, evictable</td><td class="num">0</td><td>Yes</td><td>the <code>evictable</code>
+        <code>OrderedDict</code>, oldest first</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every allocator bug is a violation of that table, which is why <code>check_invariants()</code>
+  exists and why the randomised property test calls it after every single operation.</p>
+
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Think of a library with identical numbered shelves. A shelf is empty, or someone is using it, or
+  it still holds a book nobody is reading right now but which someone might ask for again. That third
+  state is the whole trick: you don't throw the book out the moment the reader leaves, you keep it
+  until you need the shelf.</p></div>
+
+  <h4><code>plan_prompt</code> — the deliberate refusal to reuse everything</h4>
+<pre><code>hit = self.cached_prefix_blocks(hashes)[: (num_tokens - 1) // bs]
+need_new = -(-num_tokens // bs) - len(hit)</code></pre>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Read-only, so the scheduler can ask "would this fit?" without side effects. The
+  <code>(num_tokens - 1) // bs</code> cap is not an off-by-one; it is a requirement. If the entire
+  prompt were served from cache, the prefill forward pass would have zero tokens to run and would
+  produce no logits, so there would be nothing to sample the first output token from. Capping the
+  reuse one block short guarantees at least one token is recomputed. vLLM does the same thing for the
+  same reason.</p></div>
+
+  <h4><code>allocate_prompt</code> — the pinning arithmetic</h4>
+<pre><code>hit, need_new = self.plan_prompt(hashes, num_tokens)
+pinned = sum(1 for b in hit if self.ref[b] == 0)
+if need_new &gt; self.num_available() - pinned:
+    return None</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Before taking new shelves, notice that some of the books you want to reuse are currently on the
+  "nobody's reading it" pile. The moment you claim them, they stop being available for anyone else to
+  clear. So the shelves you can still take is availability minus the ones you're about to claim.
+  Forget that subtraction and you promise the same shelf to two people.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p><code>pinned</code> counts hit blocks currently sitting in <code>evictable</code> with
+  <code>ref == 0</code>. Those are inside <code>num_available()</code>, but claiming them removes them
+  from it. Without the subtraction, a request whose prefix is entirely in the LRU would be admitted
+  when <code>need_new</code> exceeds the truly free count, and <code>_take()</code> would then evict
+  blocks — possibly the very cached blocks this request just pinned, if the pinning hadn't happened
+  first. Ordering matters: hit blocks are pinned <em>before</em> any <code>_take()</code> runs.
+  Returns <code>None</code> with no side effects when it doesn't fit, because LPM skips and tries the
+  next request, and a half-applied allocation would corrupt the pool.</p></div>
+
+  <h4><code>release</code> — the reverse-order line</h4>
+<pre><code>for b in reversed(blocks):
+    self.ref[b] -= 1
+    if self.ref[b] == 0:
+        if self.hash_of[b] is not None: self.evictable[b] = None
+        else: self.free.append(b)</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>When a reader finishes, put their books back on the "might be wanted again" pile <em>starting
+  from the last page</em>. The pages at the end are the ones only they were reading; the pages at the
+  front are the shared introduction everybody needs. Since the pile is cleared oldest-first, putting
+  the private ending in first means the private ending is what gets thrown away first, and the shared
+  introduction survives.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p><code>reversed</code> puts the tail blocks into the LRU before the head blocks, so they sit
+  closer to the eviction end. A finished request's last blocks are its private suffix and its
+  generated tokens — content nothing else will ever ask for. Its first blocks are the shared prefix
+  that the next request in the same group needs. Forward-order release inverts that priority and
+  evicts the shared prefix first, which is precisely the thrashing the whole project is about. One
+  keyword, and a real contributor to hit rate.</p></div>
+
+  <h4><code>commit</code> — first writer wins</h4>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Two guards. <code>hash_of[block] is None</code> makes it idempotent, so calling it every step on
+  already-committed blocks is free. <code>h not in by_hash</code> handles duplicate content: two
+  requests can be computing the same block concurrently before either commits. The first becomes
+  canonical; the second stays unhashed, is never shared, and on release goes to <code>free</code>
+  rather than <code>evictable</code>. Trying to merge them would mean rewriting a running request's
+  block table mid-flight, which is a class of bug not worth opening.</p></div>
+
+  <h3 id="w-sched">scheduler.py — continuous batching and three policies</h3>
+
+  <h4><code>_preempt</code> — recompute-style</h4>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>When the library runs out of shelves, someone has to give theirs up. The person who most recently
+  sat down is asked to leave — but their books go back on the "might be wanted again" pile, not in the
+  bin. When they come back, a lot of what they need is often still there, so restarting is cheaper
+  than it sounds.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>The victim's blocks are released normally, so any committed ones remain in the prefix cache; when
+  it is re-admitted, <code>allocate_prompt</code> may hit most of them and the "recompute" is nearly
+  free. The hash chain is rebuilt over <code>prompt + out</code> because the request now resumes as a
+  longer prompt. Re-inserted by arrival time, so it lands near the front of the waiting queue rather
+  than at the back.</p></div>
+
+  <h4><code>_score</code> — the three policies, and only here</h4>
+<pre><code>if self.policy == "fcfs":
+    return -r.arrival
+cached = len(self.alloc.cached_prefix_blocks(r.hashes)) * self.alloc.block_size
+if self.policy == "lpm":
+    return float(cached)
+waited = now - r.arrival
+if waited &gt;= self.max_wait_s:
+    return float("inf")
+return cached + self.aging * waited</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Three ways to decide who gets served next. First: whoever has been here longest. Second: whoever
+  needs the least new work, because their ingredients are already on the counter. Third: the second
+  one, but everyone waiting earns credit as they wait, and anyone who has waited past a hard limit
+  jumps straight to the front no matter what.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p><code>alpha</code> is an exchange rate with units of tokens per second: how many cached tokens
+  one second of waiting is worth. At alpha = 2,000 a request that has waited just over a second
+  outranks a freshly arrived request carrying a 2,000-token cache hit.</p>
+  <p>There is a subtlety worth knowing, and it is why the hard deadline is not redundant. Two requests
+  both age at the same rate, so a fixed gap in arrival times gives a <em>constant</em> advantage that
+  aging never closes. Aging only wins against arrivals that keep being new — which is the actual
+  starvation scenario, a continuous stream of hot requests. Against any single competitor with a fixed
+  head start, the aging term alone never flips the order. The deadline is what converts "usually fair"
+  into a guarantee. Both of these are tests.</p></div>
+
+  <h4>Step 1: reserve decode room, preempt if needed</h4>
+<pre><code>for r in list(self.running):
+    while r.state is RequestState.RUNNING and r.seq_len &gt; len(r.blocks) * bs:
+        block = self.alloc.append_block()
+        if block is not None:
+            r.blocks.append(block); continue
+        victim = self.running[-1]
+        self._preempt(victim)
+decode = list(self.running)</code></pre>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Termination is the thing to check. Preempting <code>running[-1]</code> either frees blocks from
+  someone else (so the next <code>append_block</code> succeeds, since a running request always holds
+  at least one block) or preempts <code>r</code> itself, which flips its state and ends the
+  <code>while</code>. It cannot spin.</p>
+  <p><code>decode = list(self.running)</code> is taken <em>after</em> the preemption loop, so a
+  request preempted this step is correctly excluded from this step's decode batch. Getting that order
+  wrong would run a forward pass over a request whose blocks were just handed to someone else —
+  fluent, wrong output, no error.</p></div>
+
+  <h4>Step 2: admission, with three ways to stop and one to skip</h4>
+  <div class="tbl"><table>
+    <thead><tr><th>Policy</th><th>Order key</th><th>When a request doesn't fit</th></tr></thead>
+    <tbody>
+      <tr><td><code>fcfs</code></td><td>Arrival time</td><td>Stop admitting — strict head-of-line
+        order, like vLLM's default</td></tr>
+      <tr><td><code>lpm</code></td><td>Cached prefix tokens, descending</td><td>Skip it and try the
+        next; a smaller or more-cached request may fit</td></tr>
+      <tr><td><code>lpm_aging</code></td><td>Cached tokens + &alpha; &times; seconds waited</td>
+        <td>Skip, unless the request is starving — then stop, so memory frees up for it</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">
+    <span class="tag">The honest limit of the starvation bound</span>
+    <p>The deadline bounds <em>scheduling</em> delay, not <em>memory</em> delay. Once a starving
+    request outranks everything, admission stops — but it still cannot be admitted until enough blocks
+    free up. The real guarantee is "<code>max_wait_s</code> plus the time for the running batch to
+    release enough memory", and the test asserts that bound rather than pretending it is one
+    step.</p>
+  </div>
+  <p>Scoring only the oldest 128 is not cosmetic: scoring is O(waiting &times; prefix blocks)
+  dictionary lookups per step, and the Feather paper's finding is that this can rival GPU time. SGLang
+  caps it the same way. <code>scan_limit_exceeded</code> counts the steps where the queue was deeper
+  than the window, so the write-up can report how often the cap actually bound.</p>
+
+  <h3 id="w-engine">engine.py — the loop and the commit moment</h3>
+
+  <h4>The ceiling check</h4>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>If someone orders more than the kitchen could ever cook, tell them now rather than letting them
+  sit in the queue forever.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>A request that cannot fit in an empty pool would be admitted, need a block, find none, preempt
+  the newest-admitted request — itself — and loop forever. Rejecting it at submit turns a hang into a
+  400. The check is against the pool size <em>and</em> <code>max_model_len</code>, whichever binds
+  first.</p></div>
+
+  <h4><code>_commit_full_blocks</code> — when a block becomes shareable</h4>
+<pre><code>full = r.seq_len // bs
+if full &lt;= r.committed: return
+extend_hashes(r.hashes, r.tokens, bs)
+for index in range(r.committed, full):
+    self.alloc.commit(r.blocks[index], r.hashes[index])
+r.committed = full</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>A page goes in the catalogue the moment it's completely written, and not a moment before.
+  Catalogue it while there's still room to write and the next word you add will change a page someone
+  else is already reading.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>The timing is exact and it matters. This runs <em>after</em> the runner wrote KV for positions
+  <code>0..seq_len-1</code> and <em>before</em> the newly sampled token is appended. At that instant
+  <code>seq_len // bs</code> blocks are completely written, and <code>tokens[0:seq_len]</code> are all
+  known, so the hashes for those blocks can be computed from data that will never change. Commit one
+  step later and you'd hash a block whose last slot hasn't been written — a sharer would attend over
+  uninitialised memory. The <code>committed</code> counter makes it O(new blocks) per step rather than
+  O(all blocks). This is also where generated tokens enter the cache, which is what lets a multi-turn
+  agent's next turn reuse the previous turn's answer.</p></div>
+
+  <h3 id="w-runner">runner.py and paged attention</h3>
+
+  <h4><code>slot_mapping</code> — the off-by-one</h4>
+<pre><code>positions = np.arange(start, stop, dtype=np.int64)
+table = np.asarray(blocks, dtype=np.int64)
+return table[positions // block_size] * block_size + (positions % block_size)</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Turn "the 37th word of this conversation" into "shelf 9, slot 5". The book's pages are scattered
+  across the library, and this is the index card that says where each one physically lives.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>The decode token's position is <code>seq_len - 1</code>, not <code>seq_len</code>. Using
+  <code>seq_len</code> writes one slot too far, which stays inside the same block for fifteen out of
+  sixteen tokens — so the output is correct for exactly one block and then becomes garbage. The test
+  pins positions 15, 16, 17, 31 and 32 for exactly this reason.</p></div>
+
+  <h4>Prefill with a cached prefix</h4>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Three things are doing real work. <code>positions</code> starts at <code>num_cached</code>, not
+  at 0 — rotary embeddings are absolute, and restarting at zero is the single most likely
+  prefix-caching bug, with the symptom that output reads fine and drifts. Only
+  <code>hidden[-1:]</code> is kept, because the vocabulary is 151,936 and only the last position's
+  logits produce a token. And prefill requests are looped one at a time, because prefill is
+  compute-bound so batching them buys little.</p></div>
+
+  <h4><code>paged_decode_attention</code> — the gather</h4>
+<pre><code>k = k_cache[block_tables].reshape(batch, -1, num_kv_heads, head_dim)
+valid = torch.arange(span, device=q.device)[None, :] &lt; seq_lens[:, None]</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Each request's pages are scattered around the library. To do the maths, gather each request's
+  pages into one contiguous stack, pad the stacks to equal height, and mark which rows are real. Then
+  do ordinary attention and ignore the marked-out rows.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p><code>k_cache[block_tables]</code> is advanced indexing, so it <strong>copies</strong>. That copy
+  is the deliberate trade in this project: a fused paged-attention kernel reads the blocks in place;
+  this gathers them first, costing bandwidth and memory proportional to batch times longest sequence,
+  every layer, every step. It is slower and it is <em>identical across all three scheduling
+  policies</em>, so it cannot bias the comparison that carries the finding. The mask
+  <code>arange(L) &lt; seq_len</code> simultaneously handles the unwritten tail of the last real block
+  and the padding blocks past the end of the table.</p></div>
+
+  <h4><code>paged_prefill_attention</code> — the explicit mask</h4>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Normally "you may only look backwards" is a neat triangle, because the first word you're
+  processing is also the first word of the sentence. But when the first 2,000 words are already cached
+  and you're only processing words 2,001 onwards, the triangle is in the wrong place: word 2,001 may
+  look at all 2,000 before it, not at zero of them. So you write the rule out explicitly instead of
+  using the built-in shortcut.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p><code>is_causal=True</code> assumes queries and keys are aligned at the same origin. With a
+  cached prefix, queries start at <code>num_cached</code> and keys at 0, so the built-in mask would
+  forbid the suffix from attending to the cached prefix at all — and produce output that is
+  grammatical and wrong. The explicit mask is <code>key_pos &lt;= num_cached + query_index</code>. The
+  <code>num_cached == 0</code> branch is not just an optimisation: at full prefill lengths the
+  explicit mask would be 8000&times;8000 booleans, 64 MB, for no benefit.</p></div>
+
+  <h4>The tied embedding, and why <code>lm_head</code> is <code>None</code></h4>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Qwen2.5-0.5B ties the input and output embeddings. The obvious implementation — build an
+  <code>nn.Linear</code> and assign <code>lm_head.weight = embed_tokens.weight</code> — breaks under
+  <code>to_empty()</code>, because <code>Module._apply</code> walks each module's own
+  <code>_parameters</code> and would create two separate storages, silently untying them and then
+  failing to load one of them. Not creating the module at all sidesteps the whole problem.</p></div>
+
+  <h3 id="w-kernel">kernels/rmsnorm_quant.py</h3>
+  <div class="callout brass">
+    <span class="tag">Why RMSNorm and not an INT4 matmul</span>
+    <p>On GPUs below compute capability 8.0, Triton's <code>tl.dot</code> falls back to plain FMA on
+    CUDA cores instead of tensor cores. An INT4 matmul written in Triton on a T4 would therefore race
+    cuBLAS's tensor-core fp16 GEMM <em>without tensor cores</em>, and lose, for reasons that have
+    nothing to do with the quality of the code. RMSNorm is a memory-bound reduction with no
+    <code>dot</code>, so it lives on the well-supported part of Triton and the benefit of fusion shows
+    up cleanly.</p>
+  </div>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>In every layer the model does the same three small things back to back: add two vectors, measure
+  the result's size, and divide by it. Done separately, each of those reads the whole vector from
+  memory and writes it back — three round trips for arithmetic that takes no time at all. This does
+  all three while the data is in registers, so the vector crosses the memory bus once.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p><code>BLOCK = next_power_of_2(N)</code> — 896 rounds to 1024, 1536 to 2048 — with a mask so the
+  padding lanes load 0.0 and contribute nothing to the sum or the max. Accumulation is fp32 regardless
+  of fp16 storage. <code>(x * rstd).to(fp16).to(fp32) * w</code> casts to fp16 <em>before</em> applying
+  the weight, matching HuggingFace's ordering, which is what keeps parity tight. Quantisation is
+  symmetric per token with a <code>1e-6</code> floor on the scale to prevent a division by zero on an
+  all-zero row — a real case, and a test.</p></div>
+  <p>The expected and reported result: the hand-written kernel and <code>torch.compile</code> roughly
+  tied, both well ahead of eager at small row counts where launch overhead dominates, and a
+  single-digit percent end-to-end decode improvement because norms are a small slice of a decode step.
+  <em>"I matched Inductor and measured that it didn't matter much end to end"</em> is a stronger
+  engineering claim than a cherry-picked microbenchmark. The INT8 mode is benchmarked as a component
+  and is not used in production, because Mercury has no INT8 matmul to consume its output.</p>
+
+  <h3 id="w-bench">The benchmark harness</h3>
+
+  <h4>Open loop, and why the whole finding depends on it</h4>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Customers arrive when they arrive. They do not politely wait for the previous customer to leave
+  before walking in. If they did, the queue would never grow, and a project about queue ordering would
+  have nothing to measure.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>One asyncio task per session; each request goes out at its absolute scheduled time regardless of
+  whether earlier ones finished. A closed-loop client with N simulated users caps offered load at what
+  the server can serve, so queueing never builds and the whole scheduling effect vanishes. This is the
+  single most common way serving benchmarks accidentally measure nothing. W3 is the exception by
+  design: a dependent turn waits for the previous request in its session, then sleeps its think
+  time.</p></div>
+
+  <h4>The six workloads</h4>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Structure</th><th>What it tests</th></tr></thead>
+    <tbody>
+      <tr><td><strong>W1</strong></td><td>Independent prompts, log-normal 200–1500 tokens</td>
+        <td>Control: prefix-aware must not lose</td></tr>
+      <tr><td><strong>W2</strong></td><td>G groups, 2,000-token system prompt + 50–300 suffix,
+        interleaved</td><td>The clean case; G sets the pressure</td></tr>
+      <tr><td><strong>W3</strong></td><td>Sessions of 4–8 turns, each prompt is the whole history</td>
+        <td>Growing session-private prefixes</td></tr>
+      <tr><td><strong>W4</strong></td><td>3,000-token catalogue + one of 8 task blocks + suffix</td>
+        <td>Two-level tree sharing</td></tr>
+      <tr><td><strong>W5</strong></td><td>6,000–8,000-token prompts, low concurrency</td>
+        <td>Prefill-bound; stresses the gather</td></tr>
+      <tr><td><strong>W6</strong></td><td>100–300-token prompts, high rate</td>
+        <td>Scheduler overhead and batching</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <span class="tag">A workload subtlety that belongs in the write-up</span>
+    <p>In W3, each turn's history uses the trace's <em>scripted</em> assistant tokens, not what the
+    engine actually generated, so every engine sees byte-identical prompts. The cost is that a real
+    agent would also reuse the KV of its own previous answer, and this setup only reuses prompt-side
+    history. It understates caching for agents, applies equally to every engine, and is the price of
+    a fair comparison.</p>
+  </div>
+
+  <h4><code>capacity_for_pressure</code> — the x-axis of the main figure</h4>
+<pre><code>shared = meta.working_set_tokens / rho
+private = max_running * meta.mean_private_tokens
+return ceil((shared + private) / block_size)</code></pre>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Decide how crowded the cache should be. Give it exactly enough room for the shared material
+  divided by how crowded you want it, plus enough elbow room for the requests currently in flight to
+  hold their own private stuff.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>The headroom term is not padding: without it, a high-pressure point starves on private suffixes
+  rather than on shared prefixes, which measures a different phenomenon and would still produce a
+  plausible-looking curve. I got this wrong first time and the symptom was diagnostic — W4's capacity
+  barely moved between pressure 0.5 and 4, because the headroom was computed off the full 4,200-token
+  prompt and swamped the 11,000-token working set.</p></div>
+
+  <h4><code>check_capacity</code> — reading the cap back out</h4>
+  <div class="reg plain"><span class="lead">Plain</span>
+  <p>Ask the engine to use a small cache, then read its own startup message to confirm it actually
+  did. Flags get renamed between releases. If the cap silently didn't apply, every point in the sweep
+  is at the wrong pressure and the resulting figure is beautiful and meaningless.</p></div>
+  <div class="reg tech"><span class="lead">Technical</span>
+  <p>Per-engine regex lists against the captured startup log, with a 10% tolerance for engines that
+  round to their own block granularity. Two distinct failures are raised separately: "never reported
+  its capacity" (probably a renamed flag) and "ignored the capacity cap" (reported a number far from
+  the request). Both refuse to run the point rather than producing data.</p></div>
+
+  <h4><code>rate_sweep</code> — finding R_sat first</h4>
+  <p>The rate at which p95 TTFT goes vertical. The matrix then runs at 0.5 and 0.8 of it. Below about
+  0.3 R_sat the waiting queue is nearly always empty and no policy can reorder anything; above R_sat
+  every policy is dominated by an unbounded queue. The scheduling effect lives in between, and running
+  the matrix without measuring this first is how you get a null result you can't explain.</p>
+
+  <h3 id="w-tests">Tests, and two results that came out of them</h3>
+  <p>94 tests run on a laptop in about ten seconds; 39 more need a GPU. The allocator's three-state
+  table is checked after <em>every single operation</em> across thousands of randomised steps. The
+  cancellation tests run against a <strong>real uvicorn socket</strong>, because an in-process ASGI
+  transport never delivers <code>http.disconnect</code> — so the test would pass without the
+  cancellation path ever running, which is a test that proves nothing. I found that the hard way.</p>
+
+  <h4>The finding, in miniature, on CPU</h4>
+  <p>Six prefix groups against a pool too small to hold them:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Policy</th><th class="num">Hit rate</th><th class="num">Evictions</th>
+      <th class="num">Requests finished</th></tr></thead>
+    <tbody>
+      <tr><td>FCFS</td><td class="num">0.455</td><td class="num">1,287</td><td class="num">267</td></tr>
+      <tr><td>LPM</td><td class="num">0.817</td><td class="num">576</td><td class="num">391</td></tr>
+      <tr><td>LPM + aging</td><td class="num">0.602</td><td class="num">1,188</td><td class="num">337</td></tr>
+    </tbody>
+  </table></div>
+  <p>The eviction counts are the mechanism made visible: FCFS evicts more than twice as often, which
+  is exactly the thrashing the hypothesis predicts. And aging recovers about 40% of the gap between
+  FCFS and LPM — that is the fairness cost, stated as a number, on a workload where I control every
+  variable. A second result from the same work: with only <strong>one</strong> prefix group, all three
+  policies are identical to within 2%, because there is nothing to thrash between. That is now a test,
+  and it is the reason the main experiment uses several groups.</p>
+
+  <h4>And a calibration failure from the smoke matrix</h4>
+  <p>At pressure 2 with 512-token shared prefixes and alpha = 2,000, the fairness half worked —
+  maximum queueing fell from 1.78 s to 0.96 s — and the locality half went <em>backwards</em>, below
+  FCFS. Alpha is an exchange rate, and it was miscalibrated: at 2,000 tokens per second against
+  512-token prefixes, a quarter second of waiting outweighs a complete cache hit. Sweeping it confirms
+  the mechanism, monotone in both hit rate and throughput:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>alpha</th><th class="num">125</th><th class="num">500</th><th class="num">2,000</th>
+      <th class="num">8,000</th></tr></thead>
+    <tbody>
+      <tr><td>Hit rate</td><td class="num">0.344</td><td class="num">0.307</td><td class="num">0.281</td>
+        <td class="num">0.269</td></tr>
+      <tr><td>Output tok/s</td><td class="num">649</td><td class="num">645</td><td class="num">635</td>
+        <td class="num">626</td></tr>
+    </tbody>
+  </table></div>
+  <p>The rule: <code>alpha ≈ shared prefix tokens / acceptable wait in seconds</code>. It is now in
+  <code>Scheduler._score</code>'s docstring rather than living as a magic default. Also worth noting:
+  the pressure-0.5 sanity check passed exactly — all three policies at 0.685 hit rate, spread 0.000.
+  That is the control working.</p>
+</article>
+
+<!-- ============================ DOC 3 ============================ -->
+<article id="doc3">
+  <header class="doc-open">
+    <span class="num">Document 03</span>
+    <h2>Defending it out loud</h2>
+    <p>For demos, class presentations, and technical interviews. Everything here is meant to be
+    spoken.</p>
+  </header>
+
+  <h3 id="d-30">The 30-second version</h3>
+  <blockquote><p>Mercury is an LLM inference server I wrote from scratch in PyTorch — paged KV cache,
+  prefix caching, continuous batching, streaming. But the server is the instrument, not the product.
+  The experiment is this: when the KV cache can't hold every shared prefix at once, serving requests
+  in arrival order makes the cache thrash — you evict a prefix right before the next request that
+  needs it. Grouping requests by prefix fixes that, but it can starve requests whose prefix isn't
+  cached. So I built three schedulers that differ only in admission order, added a starvation bound to
+  the third, and measured what the bound costs as a function of how much cache pressure the system is
+  under. The headline isn't a number, it's a curve: nothing happens below capacity, the policies
+  separate in the middle, and they converge again when nothing fits.</p></blockquote>
+
+  <h3 id="d-2m">The 2-minute version</h3>
+  <blockquote>
+    <p>Serving a language model is a memory problem before it's a compute problem. Every token the
+    model has seen leaves a key and a value in every layer — about 12 KB per token for the model I
+    used. So a 2,000-token system prompt costs 24 MB, and it costs that again for every request that
+    carries it, unless you cache it. That's prefix caching, and every serious engine has it.</p>
+    <p>Here's what isn't settled. The cache is finite. When the prefixes live in your workload add up
+    to more than fits, something gets evicted — and the order you serve requests in decides what.
+    Strict arrival order interleaves prefix groups: A, then B, then C, then A again. By the time the
+    second A arrives you've evicted A's prefix to make room for B and C, so you recompute it, and then
+    evict it again. That's thrashing. In my measurements it takes the hit rate from 82% down to 45%,
+    and you can see the mechanism directly in the eviction count, which more than doubles.</p>
+    <p>Grouping requests by prefix fixes it — SGLang ships that policy. But it has a known problem: if
+    you always prefer the longest cached prefix, a request whose prefix isn't cached gets displaced by
+    every cache-hot arrival, potentially forever. There's an open issue about exactly this. So my
+    third policy adds an aging term — your priority grows as you wait — plus a hard deadline. And the
+    thing I actually measured is what that fairness bound costs in hit rate, because nobody publishes
+    that.</p>
+    <p>The measurement design is the part I'd defend hardest. The x-axis of the main figure is cache
+    pressure: shared prefix tokens divided by cache capacity, swept from 0.25 to 4. I pre-registered
+    four comparisons in the README before running anything, including one designed to fail if my
+    headline is a measurement artifact — below capacity, all three policies must be within noise of
+    each other. The load generator is open-loop, so queueing actually builds. Output lengths are fixed
+    with EOS ignored, so no engine can look faster by stopping early. And I read the cache-capacity
+    cap back out of each engine's own startup log, because a renamed flag would silently put the whole
+    sweep at the wrong pressure and produce a beautiful, meaningless figure.</p>
+    <p>What I'm not claiming: that Mercury is fast. My attention gathers KV pages into a padded tensor
+    instead of using a fused paged-attention kernel, so vLLM beats it on throughput. That's fine — the
+    gather is identical across all three policies, so it can't bias the comparison that carries the
+    finding.</p>
+  </blockquote>
+
+  <h3 id="d-board">The whiteboard version</h3>
+  <p>Draw two boxes and a queue between them. Talk from left to right.</p>
+
+  <h5>Two halves</h5>
+  <blockquote><p>All GPU work is on one thread. That kills a whole class of concurrency bug — no two
+  threads ever touch the KV cache — and it's how vLLM and SGLang are structured too. The engine never
+  touches the asyncio loop directly; it calls a callback, and the callback does
+  <code>loop.call_soon_threadsafe</code>. That one line is the whole interface back.</p></blockquote>
+
+  <h5>Write: drain → schedule → execute → route</h5>
+  <blockquote><p>Drain: apply queued submits and aborts. Aborts land here and nowhere else, so a
+  cancellation never arrives in the middle of a forward pass. Schedule: three steps in a fixed order —
+  reserve decode room, preempting the newest-admitted request if the pool is empty; score the oldest
+  128 waiting requests by policy and admit what fits; hand back a plan. Execute: build tensors, run
+  the forward, sample. Route: append tokens, register newly-full blocks in the prefix cache, close
+  finished streams.</p>
+  <p>Continuous batching falls out of doing this every step — a finished request's slot and blocks go
+  to a waiting request on the very next step. It isn't a feature, it's what you get for free by
+  scheduling every step instead of per-batch.</p></blockquote>
+
+  <h5>Draw a row of numbered boxes</h5>
+  <blockquote><p>The KV cache is one big preallocated tensor per layer, chopped into fixed 16-token
+  blocks. A request doesn't get contiguous memory, it gets a list of block IDs. So memory can never
+  fragment: any free block serves any sequence. The only waste is internal, the unfilled tail of each
+  sequence's last block, which averages about eight tokens per sequence. That's the answer if someone
+  asks about fragmentation.</p>
+  <p>Every block is in exactly one of three states: free, in use, or cached-but-unreferenced. That
+  third state is the whole trick.</p></blockquote>
+
+  <h5>Chain hashes</h5>
+  <blockquote><p>Each block's hash is computed from its own 16 tokens <em>and</em> the previous
+  block's hash. So matching on block five is a promise that blocks one through five all match. That
+  means the matched prefix is always contiguous from the start, which is why lookup can stop at the
+  first miss. And it means scheduling never looks at token IDs — hashes are computed once on arrival,
+  and scoring a request is a handful of dictionary lookups on integers.</p></blockquote>
+
+  <h5>The one line to point at</h5>
+  <blockquote><p>When a finished request releases its blocks, it releases them in <em>reverse</em>
+  order. Its last blocks are its private suffix — nothing else will ever want those. Its first blocks
+  are the shared prefix the next request in the group needs. The eviction queue is oldest-first, so
+  releasing backwards means the private tail is thrown away before the shared head. Release forwards
+  and you evict exactly the thing you were trying to cache. It's one keyword and it moves the hit
+  rate.</p></blockquote>
+
+  <h5>The three policies differ in one function</h5>
+  <blockquote><p><code>_score</code>. FCFS returns negative arrival time. LPM returns cached prefix
+  tokens. LPM+aging returns cached tokens plus alpha times seconds waited, and infinity past a hard
+  deadline. That's it. Everything else — the allocator, the batching, the attention — is
+  byte-identical across the three. That's deliberate: if the only thing that differs is the sort key,
+  then any difference in the results is attributable to the sort key.</p></blockquote>
+
+  <h3 id="d-dec">Design decisions, and what I rejected</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Decision</th><th>Rejected</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Gather + SDPA for paged attention</td><td>A Triton paged-decode kernel; FlashInfer</td>
+        <td>A second kernel is scope creep and FlashInfer on T4 via JIT adds install risk. The gather
+        is identical across policies so it can't bias the finding, and it sits behind an interface a
+        faster backend can drop into.</td></tr>
+      <tr><td>Hash chain over 16-token blocks</td><td>A radix tree, SGLang-style</td>
+        <td>O(1) lookups per block, matching vLLM. Radix trees give token-level matching but cost more
+        CPU per step, which is exactly the Feather finding. Losing up to 15 tokens against a
+        2,000-token prefix is under 1%.</td></tr>
+      <tr><td>Block size 16</td><td>32 or 64</td>
+        <td>vLLM's default, which keeps the cross-engine comparison clean. Otherwise a reviewer
+        reasonably asks whether a difference was the policy or the granularity.</td></tr>
+      <tr><td>Separate prefill and decode passes</td><td>Chunked prefill, Sarathi-style</td>
+        <td>Far simpler. The cost is real and reported rather than hidden: a long prefill stalls
+        decodes, which is why ITL p99 is a metric and not just TPOT.</td></tr>
+      <tr><td>Preemption by recompute</td><td>Swapping KV to pinned host memory</td>
+        <td>With prefix caching the victim's committed blocks are often still cached when it resumes,
+        so the recompute is largely a cache hit. Swap needs pinned buffers and a second pool.</td></tr>
+      <tr><td>Aging <em>plus</em> a hard deadline</td><td>Either one alone</td>
+        <td>Both requests age at the same rate, so a fixed arrival gap gives a constant advantage
+        aging never closes. A deadline alone is a cliff. Together: a smooth trade with a hard
+        guarantee.</td></tr>
+      <tr><td>Score only the oldest 128</td><td>Score everything</td>
+        <td>Scoring is O(waiting × prefix blocks) per step. SGLang caps it the same way. I count how
+        often the cap actually bound.</td></tr>
+      <tr><td>Fused RMSNorm kernel</td><td>An INT4 dequant-matmul kernel</td>
+        <td>A hardware argument: below sm80, Triton's <code>tl.dot</code> has no tensor cores, so an
+        INT4 matmul would lose to cuBLAS for reasons unrelated to the code. RMSNorm has no
+        <code>dot</code>.</td></tr>
+      <tr><td>Synthetic workloads</td><td>Real conversation datasets</td>
+        <td>Prefix-caching behaviour depends on the shape of sharing, not the content. Synthetic
+        traces let me control every parameter the finding depends on, and every engine replays the
+        identical file.</td></tr>
+      <tr><td>Capacity set by hand</td><td>Using whatever the GPU has free</td>
+        <td>A T4 holds ~850,000 tokens of KV for this model, which no realistic working set fills.
+        Left alone every point would sit far below pressure 1 and measure nothing.</td></tr>
+      <tr><td>One engine thread</td><td>A thread pool</td>
+        <td>The GIL makes multi-threaded GPU submission mostly pointless, and a single owner for the
+        KV cache is a large correctness win. The cost — per-step CPU on the critical path — is
+        measured separately.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="d-qa">The hard questions</h3>
+
+  <h5>On the result itself</h5>
+
+  <div class="qa"><h4><span class="qn">Q1</span>Isn't this just SGLang's LPM? What did you actually
+  add?</h4>
+  <p>SGLang's LPM is the second of my three policies and I say so in the README's second paragraph.
+  What I added is three things. First, the measurement of <em>when</em> it helps, as a function of
+  cache pressure — SGLang ships the policy but doesn't publish the curve. Second, the aging variant
+  with a hard bound, which is a proposal on an open SGLang issue that hasn't been measured. Third, the
+  fairness cost stated as a number: how much of LPM's hit-rate gain survives the starvation bound. If
+  you take LPM's number and my aged number, the difference is the price of the guarantee, and that's
+  the contribution.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q2</span>Your engine is slower than vLLM. Why should I care
+  about your numbers?</h4>
+  <p>Because the comparison that carries the finding is Mercury against Mercury. The three policies
+  share the same allocator, the same attention, the same batching, and differ only in a sort key.
+  Absolute speed cancels out of a within-engine comparison. vLLM and SGLang are in the study as
+  reference points, and specifically SGLang's own FCFS-versus-LPM pair is there as an external check:
+  if my direction of effect disagrees with a production engine's on the same traces, that's a signal I
+  have a bug, and I'd want to know.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q3</span>How do I know your prefix cache isn't just returning
+  wrong answers quickly?</h4>
+  <p>Parity testing, and it's the exit gate on every milestone. I compare greedy output against
+  HuggingFace <code>transformers</code> on the same fp16 weights across four modes: single request,
+  batched with others, with a warm prefix cache, and after a forced preemption. The requirement is
+  identical first 16 tokens on at least 48 of 50 prompts, plus first-step logits within 1e-2 max
+  absolute difference. Those four modes exist because a prefix-cache bug shows up in exactly one of
+  them — the warm-cache mode — and would pass the other three. In fp16 I don't require exact agreement
+  over long outputs because tiny numeric differences can flip a near-tie, and claiming bit-exactness
+  would be a claim I can't support.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q4</span>You showed me a fake-runner result. Isn't that made
+  up?</h4>
+  <p>It's a scheduler measurement, not a performance measurement, and I label it that way everywhere.
+  The deterministic runner produces tokens with no model, so nothing about it tells you anything about
+  GPU speed. What it does tell you is what the <em>scheduler</em> does, because the scheduler's inputs
+  are arrival times, prompt hashes and block availability — none of which involve the model. It
+  reproduces the mechanism end to end: six prefix groups against an undersized pool gives FCFS 0.455
+  hit rate with 1,287 evictions and LPM 0.817 with 576. The eviction count more than doubling is the
+  thrashing hypothesis made visible.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q5</span>What if you run the real experiment and there's no
+  effect?</h4>
+  <p>Then that's the result, and I have three specific things to check before believing it, in order.
+  One: pressure never actually exceeded 1 — check the capacity cap took effect, which is why the
+  matrix runner reads it back out of the startup log. Two: arrivals were too sparse for any reordering
+  to be possible, because the waiting queue was usually empty and there was nothing to reorder —
+  that's why the rate sweep finds R_sat first and the matrix runs at 0.5 and 0.8 of it. Three:
+  scheduler CPU ate the gain, which is a small-scale replication of the Feather finding and is a
+  publishable result rather than a failure. Each of those is measured, not guessed at.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q6</span>Your sanity check says all policies should be equal
+  below capacity. What if it fails?</h4>
+  <p>Then my headline is not trustworthy and I say so. That's the entire point of pre-registering it.
+  A failure there means the runs weren't interleaved, or a cache stayed warm from the previous run, or
+  token counts differed between conditions — all measurement bugs, not policy effects. The analysis
+  script prints PASS or FAIL on that comparison specifically so I can't quietly not look.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q7</span>In your own smoke run, LPM+aging had a <em>worse</em>
+  hit rate than FCFS. Doesn't that sink the whole thing?</h4>
+  <p>It's the most useful number I got, and it's an alpha calibration result rather than a policy
+  result. Here is the run, on the deterministic runner at pressure 2, median of two seeds:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Policy</th><th class="num">Hit rate</th><th class="num">p95 TTFT</th>
+      <th class="num">Max queue</th><th class="num">Output tok/s</th></tr></thead>
+    <tbody>
+      <tr><td>FCFS</td><td class="num">0.351</td><td class="num">0.904 s</td><td class="num">1.231 s</td>
+        <td class="num">628</td></tr>
+      <tr><td>LPM</td><td class="num">0.376</td><td class="num">0.590 s</td><td class="num">1.781 s</td>
+        <td class="num">652</td></tr>
+      <tr><td>LPM + aging (α 2000)</td><td class="num">0.265</td><td class="num">0.666 s</td>
+        <td class="num">0.963 s</td><td class="num">642</td></tr>
+    </tbody>
+  </table></div>
+  <p>The fairness half worked exactly as designed — maximum queueing fell from 1.78 s to 0.96 s. The
+  locality half went backwards, and the reason is that alpha is an exchange rate in tokens per second
+  and I had it miscalibrated for that workload. Those shared prefixes were 512 tokens; at alpha =
+  2,000, one quarter of a second of waiting outweighs a <em>complete</em> cache hit. Cache affinity
+  was swamped almost immediately and the policy degenerated into FCFS plus enough reordering to break
+  the groups up — the worst of both.</p>
+  <p>So I swept it. Monotone in hit rate and monotone in throughput, which is what a
+  locality-versus-fairness exchange rate should look like. The calibration rule that falls out is
+  <code>alpha ≈ shared prefix tokens / acceptable wait in seconds</code>. For 512-token prefixes and a
+  one-second tolerance that's about 500; for the 2,000-token prefixes in the real experiment it's
+  about 2,000, which is the default the design started with. So the constant was right for the
+  workload it was chosen for and wrong for the one I smoke-tested it on, and the fix is to derive it
+  rather than hard-code it. That's item 4 on the next-version list.</p></div>
+
+  <h5>On the systems engineering</h5>
+
+  <div class="qa"><h4><span class="qn">Q8</span>Where's your bottleneck?</h4>
+  <p>Two, and I measure both separately. First, the gather in paged attention:
+  <code>k_cache[block_tables]</code> is advanced indexing, so it copies each sequence's entire KV into
+  a padded tensor, every layer, every step. At batch 64 with 2,000-token sequences that's about 32 MB
+  per tensor per layer. That's the dominant cost and it's the thing a fused kernel would remove.
+  Second, per-step tensor building in Python — block tables, slot mappings, sequence lengths, rebuilt
+  every step. At 0.5B a decode step is short enough that this is visible, which is why
+  <code>prepare_seconds</code> is its own metric. Production engines hide it with persistent buffers
+  and CUDA graphs; I don't capture CUDA graphs at all.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q9</span>What happens under memory pressure — does it
+  deadlock?</h4>
+  <p>No, and there are two guards. At the request level, a prompt plus max_tokens that can't fit in an
+  empty pool is rejected at submit with a 400 rather than queued, because such a request would be
+  admitted, need a block, find none, preempt the newest-admitted request — itself — and loop forever.
+  At startup, the config refuses to start if the whole pool is smaller than max_model_len. Inside the
+  preemption loop, termination is guaranteed because preempting <code>running[-1]</code> either frees
+  blocks from another request, which always holds at least one, or preempts the request being served,
+  which flips its state and ends the loop.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q10</span>What's your worst failure mode?</h4>
+  <p>A stale block table producing fluent, wrong text. If a block gets evicted and reused while a
+  running request still points at it, the model attends over another request's keys and emits
+  grammatical nonsense with no error anywhere. The structural defence is the reference counting — an
+  in-use block has ref ≥ 1 and is therefore never in the evictable pool — and there's a debug flag
+  that asserts, every step, that every block in every running request's table has ref ≥ 1. The
+  behavioural defence is the warm-cache parity test.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q11</span>How do you know you don't leak memory?</h4>
+  <p>An end-of-run assertion that available blocks equals total blocks, on every offline test, plus a
+  benchmark mode that cancels 10% of requests at a random point and asserts the pool comes back whole.
+  Leaked blocks from cancelled streams are the classic slow leak in a serving system: nothing looks
+  wrong, and three hours later the pool is empty. I also found that the obvious way to test this
+  doesn't work — an in-process ASGI transport never delivers <code>http.disconnect</code>, so the
+  cancellation path never runs and the test passes for the wrong reason. The cancellation tests run
+  against a real uvicorn socket.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q12</span>What breaks under bad data?</h4>
+  <p>Adversarial input is the interesting case. I use Python's 64-bit <code>hash</code> over token
+  tuples. A user who could construct a colliding prompt would be served another user's cached KV. At
+  this scale collisions are negligible and I say so, but there's a switch for SHA-256 and the reason it
+  exists is that in a real multi-tenant deployment I'd turn it on. Malformed requests get explicit
+  400s: empty prompt, batched prompts, a text prompt with no tokenizer loaded, a request past the
+  token ceiling.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q13</span>Where does this stop scaling?</h4>
+  <p>Several places, in the order you'd hit them. One GPU, no tensor parallelism, so the model has to
+  fit on one card. The scheduler's scan is capped at 128 waiting requests, so past that it degrades
+  toward FCFS by design, and I count how often that binds. The gather in decode attention grows with
+  batch times longest sequence, so long-context plus high concurrency runs out of memory in the gather
+  before it runs out of KV cache. And the per-step Python work is serial with the GPU, so as the model
+  gets smaller and steps get shorter, scheduling and tensor-building become a larger share — which is
+  exactly the Feather finding, and why I report scheduler time as a fraction of step time.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q14</span>Why one engine thread? Isn't that leaving performance
+  on the table?</h4>
+  <p>Under the GIL, multi-threaded GPU submission from Python buys very little, and the correctness
+  benefit of a single owner for the KV cache is large — no lock discipline to get wrong, no
+  possibility of two threads writing the same block. The real cost is that per-step CPU work sits on
+  the critical path, and I measure that separately rather than hiding it. If I wanted it back, the
+  answer is CUDA graphs and persistent buffers, not more threads.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q15</span>Your block size is 16. Did you try anything else?</h4>
+  <p>Not as an experiment, and I'd call that a gap rather than defend it. I picked 16 because it's
+  vLLM's default and keeping it identical across engines removes a confounder — if I ran 64 and vLLM
+  ran 16, a reviewer would reasonably ask whether a difference was the policy or the granularity. The
+  tradeoff is understood: bigger blocks mean fewer hash lookups and less gather overhead but coarser
+  sharing and more internal waste. Sweeping it is a next-version item.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q16</span>How much of vLLM's lead is kernels and how much is
+  CUDA graphs?</h4>
+  <p>That's exactly why the experiment runs vLLM both with and without <code>--enforce-eager</code>. I
+  don't want to attribute a gap to kernel quality when part of it is graph capture that I simply
+  didn't implement. If I'm going to lose to vLLM — and I will — I'd rather be able to say which part
+  of the loss is which.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q17</span>Isn't fragmentation a problem with a block
+  allocator?</h4>
+  <p>Not external fragmentation — that's the whole point of fixed-size blocks. Any free block serves
+  any sequence, so there's no such thing as a free region too small to use. What you pay instead is
+  internal fragmentation: the unfilled tail of each sequence's last block, which averages about eight
+  tokens per sequence at block size 16. That's the honest answer, and because it's bounded and
+  predictable it's a much easier thing to live with than the contiguous-allocation alternative.</p></div>
+
+  <h5>On the measurement</h5>
+
+  <div class="qa"><h4><span class="qn">Q18</span>Why open-loop? Everyone uses closed-loop
+  clients.</h4>
+  <p>Because a closed-loop client with N simulated users caps offered load at whatever the server can
+  serve. The queue never grows past N. And this entire project is about the <em>order</em> of the
+  waiting queue — if there's no queue, there's nothing to measure, and all three policies would
+  correctly come out identical. I verified that experimentally, in fact: with a zero-cost fake runner,
+  every request is served instantly, the queue is always empty, and the harness reports no difference
+  between policies. That's the harness being right, and it's the second thing I'd check if the real
+  experiment showed nothing.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q19</span>Why fixed output lengths? That's not realistic.</h4>
+  <p>It's not realistic and it is necessary. If engines stop at different points, an engine that stops
+  early generates fewer tokens and looks faster, and you're no longer comparing like with like. So
+  every request has a fixed max_tokens with EOS ignored, and the client verifies the streamed token
+  counts and flags any run where they disagree. Realism in output length would cost me the ability to
+  compare at all, and the thing I'm measuring — admission order — doesn't depend on it.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q20</span>Your warmup sends requests that aren't in the trace.
+  Why not just warm it up with the trace?</h4>
+  <p>Because then the prefix cache would start the measured run already holding the exact prefixes the
+  run is about to ask for, and the first N requests would get free hits they wouldn't get in
+  production. The server does need warming — CUDA context, allocator, Python caches — so the warmup is
+  50 deliberately off-trace requests, followed by a stats reset. Warm server, cold cache, zeroed
+  counters.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q21</span>Three repetitions is not a lot. How do you justify any
+  confidence interval?</h4>
+  <p>The three repetitions are different trace seeds, and I report the median across them plus the
+  spread. The confidence intervals come from bootstrapping the pooled per-request values — 500
+  requests per point, resampled 2,000 times — not from three numbers. And below eight samples the
+  function returns a point estimate with no interval rather than drawing an error bar from
+  nothing.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q22</span>How do you know thermal throttling isn't your
+  result?</h4>
+  <p>Three things. Run order is shuffled within each session, so if the machine drifts, the drift
+  spreads across conditions rather than landing on whichever policy ran last. GPU clocks, temperature
+  and memory are sampled at 10 Hz for the whole of every run, so I can show they didn't drift rather
+  than assert it. And I can't lock clocks on Kaggle without root, which I state rather than pretend
+  otherwise.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q23</span>How do you know your client isn't the
+  bottleneck?</h4>
+  <p>I measure it. Client CPU time is recorded per run and reported, and any run where the client
+  exceeded 70% of a core is flagged in the verification output. Kaggle has few cores and the client
+  shares them with the server, so this is a real risk and not a theoretical one. The client is
+  deliberately light — asyncio plus aiohttp, no per-token JSON pretty-printing — and the benchmark
+  sends and receives raw token IDs so there's no tokenizer in the measurement loop.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q24</span>What stops you from picking the comparison that looks
+  best after seeing the data?</h4>
+  <p>Four comparisons written into the README before the experiment ran, computed verbatim by the
+  analysis script, printed with PASS/FAIL. One of them is designed to fail if the headline is an
+  artifact. That's not a complete defence against motivated reasoning, but it's the standard defence,
+  and the alternative — deciding what to report after looking — is how most benchmark projects fool
+  themselves.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q25</span>Your <code>max_wait_s</code> is 5 seconds. Where did
+  that come from?</h4>
+  <p>It's a choice, not a derivation, and I'd say so. At 0.5B with these output lengths, a five-second
+  wait is already a bad user experience, so bounding there rather than at one second keeps the bound
+  from dominating the policy entirely. The real answer is that it's a tunable fairness knob and the
+  interesting output is the tradeoff curve, not the point. I have measured that the bound behaves
+  correctly — the starvation test asserts it — and I've measured that tightening it costs hit
+  rate.</p></div>
+
+  <div class="qa"><h4><span class="qn">Q26</span>What's the actual guarantee your starvation bound
+  gives?</h4>
+  <p>I want to be precise here because the obvious claim is slightly too strong. The deadline bounds
+  <em>scheduling</em> delay: past <code>max_wait_s</code> a request outranks everything and no other
+  request will be admitted ahead of it. It does not bound <em>memory</em> delay — the request still
+  can't start until enough blocks free up. So the honest guarantee is "<code>max_wait_s</code> plus
+  the time for the running batch to release enough memory", and the test asserts that bound rather
+  than pretending it's one step. If I wanted a hard wall-clock bound I'd have to preempt running
+  requests on behalf of a starving one, which is a real design option I didn't take because it trades
+  one unfairness for another.</p></div>
+
+  <h3 id="d-lim">Known limitations</h3>
+  <p>Stated as facts, because each one was a choice.</p>
+  <ul>
+    <li><strong>Qwen2 only, fp16 only, one GPU.</strong> No tensor parallelism, no other
+      architectures, no quantised weights. fp16 specifically because a T4 is compute capability 7.5
+      and has no bf16.</li>
+    <li><strong>No fused paged-attention kernel.</strong> The gather is the throughput ceiling. vLLM
+      beats Mercury on raw speed and that gap is mostly this.</li>
+    <li><strong>No CUDA graphs.</strong> Per-step launch overhead is paid in full, every step, and
+      measured.</li>
+    <li><strong>No chunked prefill.</strong> A long prefill stalls every decode in flight. ITL p99 is
+      reported so the cost is visible rather than averaged away by TPOT.</li>
+    <li><strong>Preemption is recompute-only.</strong> No swap to host memory.</li>
+    <li><strong>Block size is fixed at 16</strong> and was not swept.</li>
+    <li><strong>64-bit non-cryptographic hashing by default.</strong> Fine at this scale, not fine
+      against an adversary. The switch exists; the default doesn't use it.</li>
+    <li><strong>Scheduler scan is capped at 128</strong> and degrades toward FCFS beyond that.
+      Counted, not hidden.</li>
+    <li><strong>Synthetic workloads only</strong>, and in the multi-turn case the history uses
+      scripted assistant tokens rather than generated ones, which understates caching for agents
+      equally across engines.</li>
+    <li><strong>Single-node measurement on a shared free-tier GPU.</strong> Clocks can't be locked.
+      Logged instead.</li>
+  </ul>
+
+  <h4>What the next version adds</h4>
+  <p>In the order I'd actually do them.</p>
+  <ol>
+    <li><strong>A fused paged-attention kernel</strong>, or FlashInfer behind the existing context
+      interface. The single biggest absolute-performance item, and the interface already exists to
+      accept it.</li>
+    <li><strong>Chunked prefill.</strong> Mixing a slice of prefill into each decode step removes the
+      ITL spikes that separate prefill phases cause. This is the fix for the metric I currently just
+      report.</li>
+    <li><strong>CUDA graphs for the decode path</strong>, plus persistent buffers so per-step tensor
+      building stops being serial with the GPU. Together with (1), most of the vLLM gap.</li>
+    <li><strong>Alpha as a function of workload rather than a constant.</strong> The smoke run showed
+      alpha has to scale with prefix length; deriving it from the observed mean cached-prefix length
+      would make the policy self-tuning and would remove the one calibration failure I found.</li>
+    <li><strong>Preemption on behalf of a starving request</strong>, so the starvation bound becomes a
+      true wall-clock guarantee rather than a scheduling-order guarantee. This needs a fairness
+      argument about what you're allowed to preempt, which is why it isn't in version one.</li>
+    <li><strong>A block-size sweep</strong>, to replace "I used vLLM's default" with a
+      measurement.</li>
+    <li><strong>Cryptographic hashing on by default</strong> with the performance cost measured, so
+      multi-tenant use is safe out of the box.</li>
+    <li><strong>Tensor parallelism</strong>, which is the point where the single-engine-thread design
+      has to be revisited seriously rather than defended.</li>
+  </ol>
+</article>
+
+</main>
+</div>
+
+<button class="theme-toggle ui" id="tt" aria-label="Switch between light and dark">Theme</button>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('tt');
+  btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme');
+    if(!cur){
+      cur=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    }
+    root.setAttribute('data-theme',cur==='dark'?'light':'dark');
+  });
+
+  var links=Array.prototype.slice.call(document.querySelectorAll('nav.rail a'));
+  var targets=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));})
+                   .filter(Boolean);
+  if(!('IntersectionObserver' in window)||!targets.length) return;
+
+  var visible={};
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ visible[e.target.id]=e.isIntersecting?e.intersectionRatio:0; });
+    var bestId=null,best=-1;
+    targets.forEach(function(t){
+      var v=visible[t.id]||0;
+      if(v>best){best=v;bestId=t.id;}
+    });
+    if(best<=0) return;
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href')==='#'+bestId);
+    });
+  },{rootMargin:'-8% 0px -70% 0px',threshold:[0,0.25,0.5,1]});
+  targets.forEach(function(t){obs.observe(t);});
+})();
+</script>

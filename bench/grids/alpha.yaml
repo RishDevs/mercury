@@ -1,0 +1,63 @@
+# The alpha sweep, on the deterministic runner so it costs no GPU quota.
+#
+# alpha is an exchange rate in tokens per second: how many cached tokens one second of
+# waiting is worth. The right value is not universal, it is relative to how long the shared
+# prefixes are. With 512-token prefixes, alpha = 2000 means a request outranks a full cache
+# hit after a quarter of a second, so cache affinity is swamped almost immediately and the
+# policy degenerates towards FCFS with extra reordering. The same alpha against 2000-token
+# prefixes buys a full second.
+#
+# Run this before fixing alpha for E1, and read it as "hit rate against worst-case wait".
+name: alpha
+model: fake-model
+revision: null
+out_dir: results/alpha
+traces_dir: traces/smoke
+fake_runner: true
+fake_step_delay: 0.006
+
+block_size: 16
+max_running: 8
+prefill_budget: 8192
+max_model_len: 4096
+num_requests: 120
+warmup_requests: 10
+startup_timeout: 120
+cooldown_s: 1
+shuffle_seed: 3
+
+r_sat: 7.0
+rate_factors: [0.8]
+seeds: [0, 1]
+max_wait_s: 2.0
+
+workload_params:
+  w2:
+    groups: 8
+    system_tokens: 512
+
+points:
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    extra:
+      alpha: 125.0
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    extra:
+      alpha: 500.0
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    extra:
+      alpha: 2000.0
+  - engine: mercury
+    policies: [lpm_aging]
+    workloads: [w2]
+    rhos: [2]
+    extra:
+      alpha: 8000.0

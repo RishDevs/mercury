@@ -1,0 +1,46 @@
+# E1: policy x pressure. This is the experiment the finding rests on.
+name: e1
+model: Qwen/Qwen2.5-0.5B-Instruct
+revision: null            # set to the exact commit hash before the reported runs
+out_dir: results/e1
+traces_dir: traces
+block_size: 16
+max_running: 64
+prefill_budget: 8192
+max_model_len: 8192
+num_requests: 500
+warmup_requests: 50
+startup_timeout: 900
+cooldown_s: 10
+shuffle_seed: 0
+
+# Measured first with `--sweep`; everything below is a fraction of it.
+r_sat: 12.0
+rate_factors: [0.5, 0.8]
+seeds: [0, 1, 2]
+
+alpha: 2000.0
+max_wait_s: 5.0
+scan_limit: 128
+
+sweep_workload: w2
+sweep_rho: 2.0
+
+workload_params:
+  w2:
+    groups: 16
+  w4:
+    tasks: 8
+
+points:
+  - engine: mercury
+    policies: [fcfs, lpm, lpm_aging]
+    workloads: [w2, w3, w4]
+    rhos: [0.5, 1, 2, 4]
+
+  # The no-sharing control. Prefix-aware must not lose here.
+  - engine: mercury
+    policies: [fcfs, lpm, lpm_aging]
+    workloads: [w1]
+    rhos: [1]
+    rate_factors: [0.8]

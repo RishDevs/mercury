@@ -1,0 +1,49 @@
+# The whole pipeline with no GPU and no weights: deterministic tokens, real server
+# process, real HTTP, real analysis. Run this before spending session quota, so that a
+# broken harness is discovered on a laptop rather than halfway through a Kaggle session.
+#
+#   python -m bench.run_matrix --grid bench/grids/smoke.yaml --out results/smoke
+#   python -m bench.analyze --results results/smoke --out analysis/smoke
+#
+# These numbers describe the scheduler, not the GPU. Never report them as performance.
+name: smoke
+model: fake-model
+revision: null
+out_dir: results/smoke
+traces_dir: traces/smoke
+fake_runner: true
+
+# Simulated GPU time per step. With zero, every request is served the instant it arrives,
+# the waiting queue is always empty, and no policy can reorder anything: the harness
+# correctly reports no difference between policies. 6 ms is roughly a 0.5B decode step at
+# this batch size, which is enough for a queue to form.
+fake_step_delay: 0.006
+
+block_size: 16
+max_running: 8
+prefill_budget: 8192
+max_model_len: 4096
+num_requests: 120
+warmup_requests: 10
+startup_timeout: 120
+cooldown_s: 1
+shuffle_seed: 0
+
+r_sat: 7.0
+rate_factors: [0.8]
+seeds: [0, 1]
+
+alpha: 2000.0
+max_wait_s: 2.0
+scan_limit: 128
+
+workload_params:
+  w2:
+    groups: 8
+    system_tokens: 512
+
+points:
+  - engine: mercury
+    policies: [fcfs, lpm, lpm_aging]
+    workloads: [w2]
+    rhos: [0.5, 1, 2, 4]
