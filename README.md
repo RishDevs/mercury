@@ -1,3 +1,5 @@
+<img src=".github/header.svg" width="100%" alt="mercury — Mercury — README header">
+
 # Mercury
 
 A from-scratch PyTorch inference server for a 0.5B model on one T4: paged KV cache, prefix
